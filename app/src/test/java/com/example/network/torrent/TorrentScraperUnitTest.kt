@@ -183,7 +183,7 @@ class TorrentScraperUnitTest {
         val b32Hash = "4W3NXG35V524QOMX5377X5Q57S234567"
         val b32Magnet = "magnet:?xt=urn:btih:$b32Hash&dn=test"
         assertTrue(MagnetUtils.isValidMagnetUri(b32Magnet))
-        assertEquals(b32Hash, MagnetUtils.extractMagnetHash(b32Magnet))
+        assertEquals(MagnetParser.base32ToHex(b32Hash), MagnetUtils.extractMagnetHash(b32Magnet))
 
         // Invalid magnets
         assertFalse(MagnetUtils.isValidMagnetUri("https://example.com/video.mp4"))

@@ -16,7 +16,7 @@ import com.example.data.local.entity.*
         StudioEntity::class,
         SettingsEntity::class
     ],
-    version = 19,
+    version = 20,
     exportSchema = false
 )
 @TypeConverters(RoomConverters::class)
@@ -139,6 +139,14 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_19_20 = object : androidx.room.migration.Migration(19, 20) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE links ADD COLUMN urlVR TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE links ADD COLUMN magnetVR TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE links ADD COLUMN torrentUrlVR TEXT DEFAULT NULL")
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -154,7 +162,8 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_15_16,
                         MIGRATION_16_17,
                         MIGRATION_17_18,
-                        MIGRATION_18_19
+                        MIGRATION_18_19,
+                        MIGRATION_19_20
                     )
                     .fallbackToDestructiveMigration(true)
                     .build()

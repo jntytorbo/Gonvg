@@ -312,11 +312,15 @@ object TorrentScraper {
                 continue
             }
 
+            val isVr = lowerTitle.contains("vr") || lowerTitle.contains("virtualreality") ||
+                    lowerTitle.contains("vr180") || lowerTitle.contains("vr360") ||
+                    lowerTitle.contains("sbs") || lowerTitle.contains("sidebyside") ||
+                    lowerTitle.contains("4096p") || lowerTitle.contains("3600p") || lowerTitle.contains("5400p")
             val is4k = lowerTitle.contains("2160p") || lowerTitle.contains("4k") || lowerTitle.contains("uhd")
             val is1080p = lowerTitle.contains("1080p") || lowerTitle.contains("fullhd") ||
                     lowerTitle.contains("full hd") || lowerTitle.contains("1080")
 
-            if (!is4k && !is1080p) continue
+            if (!is4k && !is1080p && !isVr) continue
 
             val anchorResult = AnchorMatcher.checkAnchors(title, studios, actors, query)
             if (!anchorResult.isMatch) continue
@@ -330,7 +334,8 @@ object TorrentScraper {
                     embeddedMagnet = embeddedMagnet,
                     score = score,
                     is4k = is4k,
-                    is1080p = is1080p
+                    is1080p = is1080p,
+                    isVr = isVr
                 )
             )
         }
@@ -374,24 +379,32 @@ object TorrentScraper {
 
         val qMatcher = DETAIL_QUALITY_PATTERN.matcher(titleText)
         val quality = if (qMatcher.find()) qMatcher.group(1).lowercase() else "1080p"
+        val lowerTitle = titleText.lowercase()
+        val isVr = quality.contains("vr") || lowerTitle.contains("vr") || lowerTitle.contains("virtualreality") ||
+                lowerTitle.contains("vr180") || lowerTitle.contains("vr360") || lowerTitle.contains("sidebyside") ||
+                lowerTitle.contains("sbs") || lowerTitle.contains("4096p") || lowerTitle.contains("3600p")
         val is4k = quality.contains("2160p") || quality.contains("4k") || quality.contains("8k")
 
-        return if (is4k) {
-            TorrentSearchResult(magnet2160p = magnet, url2160p = detailUrl, sourceSite = "xxxclub.to")
-        } else {
-            TorrentSearchResult(magnet1080p = magnet, url1080p = detailUrl, sourceSite = "xxxclub.to")
+        return when {
+            isVr -> TorrentSearchResult(magnetVR = magnet, urlVR = detailUrl, sourceSite = "xxxclub.to")
+            is4k -> TorrentSearchResult(magnet2160p = magnet, url2160p = detailUrl, sourceSite = "xxxclub.to")
+            else -> TorrentSearchResult(magnet1080p = magnet, url1080p = detailUrl, sourceSite = "xxxclub.to")
         }
     }
 
     data class QueryCandidates(
         var best1080: TorrentCandidate? = null,
         var best4k: TorrentCandidate? = null,
+        var bestVr: TorrentCandidate? = null,
         var fallback: TorrentCandidate? = null
     ) {
         fun evaluate(candidates: List<TorrentCandidate>) {
             for (c in candidates) {
                 if (fallback == null || c.score > fallback!!.score) {
                     fallback = c
+                }
+                if (c.isVr && (bestVr == null || c.score > bestVr!!.score)) {
+                    bestVr = c
                 }
                 if (c.is4k && (best4k == null || c.score > best4k!!.score)) {
                     best4k = c
@@ -403,8 +416,10 @@ object TorrentScraper {
         }
 
         fun finalizeCandidates() {
-            if (best1080 == null && best4k == null && fallback != null) {
-                best1080 = fallback
+            if (best1080 == null && best4k == null && bestVr == null && fallback != null) {
+                if (fallback!!.isVr) bestVr = fallback
+                else if (fallback!!.is4k) best4k = fallback
+                else best1080 = fallback
             }
         }
     }
@@ -429,9 +444,15 @@ object TorrentScraper {
                 fetchHtml("https://xxxclub.to/torrents/search/4/$encodedQ", timeoutMs = 3500, context = context)
             } catch (_: Exception) { "" }
         }
+        val cat6Deferred = async {
+            try {
+                fetchHtml("https://xxxclub.to/torrents/search/6/$encodedQ", timeoutMs = 3500, context = context)
+            } catch (_: Exception) { "" }
+        }
 
         val cat2Html = cat2Deferred.await()
         val cat4Html = cat4Deferred.await()
+        val cat6Html = cat6Deferred.await()
 
         if (cat2Html.isNotBlank()) {
             qc.evaluate(parseXxxclubList(cat2Html, query, datePatterns, studios, actors))
@@ -439,11 +460,15 @@ object TorrentScraper {
         if (cat4Html.isNotBlank()) {
             qc.evaluate(parseXxxclubList(cat4Html, query, datePatterns, studios, actors))
         }
+        if (cat6Html.isNotBlank()) {
+            qc.evaluate(parseXxxclubList(cat6Html, query, datePatterns, studios, actors))
+        }
 
         val next2Url = if (qc.best1080 == null && cat2Html.isNotBlank()) findNextPageUrl(cat2Html) else null
         val next4Url = if (qc.best4k == null && cat4Html.isNotBlank()) findNextPageUrl(cat4Html) else null
+        val next6Url = if (qc.bestVr == null && cat6Html.isNotBlank()) findNextPageUrl(cat6Html) else null
 
-        if (next2Url != null || next4Url != null) {
+        if (next2Url != null || next4Url != null || next6Url != null) {
             val next2Def = async {
                 if (next2Url != null) {
                     try { fetchHtml(next2Url, timeoutMs = 3500, context = context) } catch (_: Exception) { "" }
@@ -454,18 +479,27 @@ object TorrentScraper {
                     try { fetchHtml(next4Url, timeoutMs = 3500, context = context) } catch (_: Exception) { "" }
                 } else ""
             }
+            val next6Def = async {
+                if (next6Url != null) {
+                    try { fetchHtml(next6Url, timeoutMs = 3500, context = context) } catch (_: Exception) { "" }
+                } else ""
+            }
 
             val next2Html = next2Def.await()
             val next4Html = next4Def.await()
+            val next6Html = next6Def.await()
             if (next2Html.isNotBlank()) {
                 qc.evaluate(parseXxxclubList(next2Html, query, datePatterns, studios, actors))
             }
             if (next4Html.isNotBlank()) {
                 qc.evaluate(parseXxxclubList(next4Html, query, datePatterns, studios, actors))
             }
+            if (next6Html.isNotBlank()) {
+                qc.evaluate(parseXxxclubList(next6Html, query, datePatterns, studios, actors))
+            }
         }
 
-        if (qc.best1080 == null || qc.best4k == null) {
+        if (qc.best1080 == null || qc.best4k == null || qc.bestVr == null) {
             val allHtml = try {
                 fetchHtml("https://xxxclub.to/torrents/search/all/$encodedQ", timeoutMs = 3500, context = context)
             } catch (_: Exception) { "" }
@@ -473,7 +507,7 @@ object TorrentScraper {
             if (allHtml.isNotBlank()) {
                 qc.evaluate(parseXxxclubList(allHtml, query, datePatterns, studios, actors))
 
-                if (qc.best1080 == null || qc.best4k == null) {
+                if (qc.best1080 == null || qc.best4k == null || qc.bestVr == null) {
                     val allNextUrl = findNextPageUrl(allHtml)
                     if (allNextUrl != null) {
                         val allNextHtml = try {
@@ -520,49 +554,50 @@ object TorrentScraper {
 
                 var mag1080 = qc.best1080?.embeddedMagnet
                 var mag4k = qc.best4k?.embeddedMagnet
+                var magVr = qc.bestVr?.embeddedMagnet
                 val url1080 = qc.best1080?.detailUrl
                 val url4k = qc.best4k?.detailUrl
+                val urlVr = qc.bestVr?.detailUrl
 
                 val fetch1080Needed = mag1080 == null && url1080 != null
                 val fetch4kNeeded = mag4k == null && url4k != null
+                val fetchVrNeeded = magVr == null && urlVr != null
 
-                if (fetch1080Needed || fetch4kNeeded) {
-                    if (url1080 != null && url1080 == url4k) {
-                        try {
-                            val html = fetchHtml(url1080, timeoutMs = 4000, context = context)
-                            val parsed = parseXxxclubDetail(html, url1080)
-                            if (fetch1080Needed) mag1080 = parsed?.magnet1080p
-                            if (fetch4kNeeded) mag4k = parsed?.magnet2160p
-                        } catch (_: Exception) {}
-                    } else {
-                        val d1080Def = async {
-                            if (fetch1080Needed && url1080 != null) {
-                                try {
-                                    val html = fetchHtml(url1080, timeoutMs = 4000, context = context)
-                                    parseXxxclubDetail(html, url1080)?.magnet1080p
-                                } catch (_: Exception) { null }
-                            } else null
-                        }
-                        val d4kDef = async {
-                            if (fetch4kNeeded && url4k != null) {
-                                try {
-                                    val html = fetchHtml(url4k, timeoutMs = 4000, context = context)
-                                    parseXxxclubDetail(html, url4k)?.magnet2160p
-                                } catch (_: Exception) { null }
-                            } else null
-                        }
+                if (fetch1080Needed || fetch4kNeeded || fetchVrNeeded) {
+                    val detailsToFetch = listOfNotNull(
+                        if (fetch1080Needed) url1080 else null,
+                        if (fetch4kNeeded) url4k else null,
+                        if (fetchVrNeeded) urlVr else null
+                    ).distinct()
 
-                        if (fetch1080Needed) mag1080 = d1080Def.await()
-                        if (fetch4kNeeded) mag4k = d4kDef.await()
+                    val fetchedDetails = detailsToFetch.map { url ->
+                        async {
+                            try {
+                                val html = fetchHtml(url, timeoutMs = 4000, context = context)
+                                url to parseXxxclubDetail(html, url)
+                            } catch (_: Exception) { url to null }
+                        }
+                    }.awaitAll().toMap()
+
+                    if (fetch1080Needed && url1080 != null) {
+                        mag1080 = fetchedDetails[url1080]?.magnet1080p ?: fetchedDetails[url1080]?.magnetVR ?: fetchedDetails[url1080]?.magnet2160p
+                    }
+                    if (fetch4kNeeded && url4k != null) {
+                        mag4k = fetchedDetails[url4k]?.magnet2160p
+                    }
+                    if (fetchVrNeeded && urlVr != null) {
+                        magVr = fetchedDetails[urlVr]?.magnetVR ?: fetchedDetails[urlVr]?.magnet2160p
                     }
                 }
 
-                if (MagnetUtils.isValidMagnetUri(mag1080) || MagnetUtils.isValidMagnetUri(mag4k)) {
+                if (MagnetUtils.isValidMagnetUri(mag1080) || MagnetUtils.isValidMagnetUri(mag4k) || MagnetUtils.isValidMagnetUri(magVr)) {
                     return@coroutineScope TorrentSearchResult(
                         magnet1080p = mag1080?.takeIf { MagnetUtils.isValidMagnetUri(it) },
                         url1080p = url1080,
                         magnet2160p = mag4k?.takeIf { MagnetUtils.isValidMagnetUri(it) },
                         url2160p = url4k,
+                        magnetVR = magVr?.takeIf { MagnetUtils.isValidMagnetUri(it) },
+                        urlVR = urlVr,
                         sourceSite = "xxxclub.to",
                         matchedQuery = query
                     )

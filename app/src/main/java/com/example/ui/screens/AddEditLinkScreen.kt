@@ -80,10 +80,13 @@ fun AddEditLinkScreen(
     val aspectRatio = existingLink?.aspectRatio ?: "16:9"
     var urlHD by remember { mutableStateOf(existingLink?.urlHD ?: "") }
     var url4K by remember { mutableStateOf(existingLink?.url4K ?: "") }
+    var urlVR by remember { mutableStateOf(existingLink?.urlVR ?: "") }
     var magnetHD by remember { mutableStateOf(existingLink?.magnet ?: "") }
     var magnet4K by remember { mutableStateOf(existingLink?.magnet4K ?: "") }
+    var magnetVR by remember { mutableStateOf(existingLink?.magnetVR ?: "") }
     var torrentUrlHD by remember { mutableStateOf(existingLink?.torrentUrlHD ?: "") }
     var torrentUrl4K by remember { mutableStateOf(existingLink?.torrentUrl4K ?: "") }
+    var torrentUrlVR by remember { mutableStateOf(existingLink?.torrentUrlVR ?: "") }
     var torrentSiteName by remember { mutableStateOf(existingLink?.torrentSiteName ?: "") }
     var selectedActorIds by remember { mutableStateOf(existingLink?.actorIds ?: emptyList()) }
     var selectedStudioIds by remember { mutableStateOf(existingLink?.studioIds ?: emptyList()) }
@@ -98,10 +101,13 @@ fun AddEditLinkScreen(
             coverImage = existingLink.coverImage
             urlHD = existingLink.urlHD ?: ""
             url4K = existingLink.url4K ?: ""
+            urlVR = existingLink.urlVR ?: ""
             magnetHD = existingLink.magnet ?: ""
             magnet4K = existingLink.magnet4K ?: ""
+            magnetVR = existingLink.magnetVR ?: ""
             torrentUrlHD = existingLink.torrentUrlHD ?: ""
             torrentUrl4K = existingLink.torrentUrl4K ?: ""
+            torrentUrlVR = existingLink.torrentUrlVR ?: ""
             torrentSiteName = existingLink.torrentSiteName ?: ""
             selectedActorIds = existingLink.actorIds
             selectedStudioIds = existingLink.studioIds
@@ -242,10 +248,13 @@ fun AddEditLinkScreen(
                                     aspectRatio = aspectRatio,
                                     urlHD = urlHD.trim().ifEmpty { null },
                                     url4K = url4K.trim().ifEmpty { null },
+                                    urlVR = urlVR.trim().ifEmpty { null },
                                     magnet = magnetHD.trim().ifEmpty { null },
                                     magnet4K = magnet4K.trim().ifEmpty { null },
+                                    magnetVR = magnetVR.trim().ifEmpty { null },
                                     torrentUrlHD = torrentUrlHD.trim().ifEmpty { null },
                                     torrentUrl4K = torrentUrl4K.trim().ifEmpty { null },
+                                    torrentUrlVR = torrentUrlVR.trim().ifEmpty { null },
                                     torrentSiteName = torrentSiteName.trim().ifEmpty { null },
                                     actorIds = selectedActorIds,
                                     studioIds = selectedStudioIds,
@@ -350,6 +359,17 @@ fun AddEditLinkScreen(
                                             }
                                             if (result.url2160p != null) {
                                                 torrentUrl4K = result.url2160p
+                                            }
+
+                                            if (result.magnetVR != null) {
+                                                if (magnetVR.isNotBlank() && magnetVR != result.magnetVR) {
+                                                    replacedAny = true
+                                                }
+                                                magnetVR = result.magnetVR
+                                                filledQualities.add("VR")
+                                            }
+                                            if (result.urlVR != null) {
+                                                torrentUrlVR = result.urlVR
                                             }
 
                                             if (result.sourceSite.isNotBlank()) {
@@ -546,6 +566,32 @@ fun AddEditLinkScreen(
                     },
                     modifier = Modifier.weight(1f),
                     testTag = "4k_magnet_input"
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                SceneInputField(
+                    value = magnetVR,
+                    onValueChange = { magnetVR = it },
+                    placeholder = "VR Magnet",
+                    trailingIcon = {
+                        PasteTrailingIcon(onPaste = { magnetVR = it })
+                    },
+                    modifier = Modifier.weight(1f),
+                    testTag = "vr_magnet_input"
+                )
+                SceneInputField(
+                    value = urlVR,
+                    onValueChange = { urlVR = it },
+                    placeholder = "VR URL",
+                    trailingIcon = {
+                        PasteTrailingIcon(onPaste = { urlVR = it })
+                    },
+                    modifier = Modifier.weight(1f),
+                    testTag = "vr_url_input"
                 )
             }
 

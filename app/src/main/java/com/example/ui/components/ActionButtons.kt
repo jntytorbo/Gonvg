@@ -50,6 +50,7 @@ object BtnColors {
     val Edit = Color(0xFF22A877)
     val Delete = Color(0xFFE84C4C)
     val Cancel = Color(0xFF64748B)
+    val Vr = Color(0xFF38BDF8)
 }
 
 val LocalActionsInteractive = compositionLocalOf { true }
@@ -313,11 +314,13 @@ fun QualitySelectMenu(
     onSelectHD: () -> Unit,
     onSelect4K: () -> Unit,
     modifier: Modifier = Modifier,
+    onSelectVR: () -> Unit = {},
     hasHD: Boolean = true,
-    has4K: Boolean = true
+    has4K: Boolean = true,
+    hasVR: Boolean = false
 ) {
     val progress = LocalActionMenuProgress.current
-    val totalButtons = (if (hasHD) 1 else 0) + (if (has4K) 1 else 0)
+    val totalButtons = (if (hasHD) 1 else 0) + (if (has4K) 1 else 0) + (if (hasVR) 1 else 0)
     var btnIndex = 0
 
     Row(
@@ -342,6 +345,16 @@ fun QualitySelectMenu(
                 color = BtnColors.K4,
                 onClick = onSelect4K,
                 icon = painterResource(R.drawable.ic_quality_4k),
+                modifier = Modifier.staggeredActionEntrance(progress, indexFromLeft = idx, totalItems = totalButtons)
+            )
+        }
+        if (hasVR) {
+            val idx = btnIndex++
+            ActionCircleButton(
+                label = "VR",
+                color = BtnColors.Vr,
+                onClick = onSelectVR,
+                icon = painterResource(R.drawable.ic_player_vr),
                 modifier = Modifier.staggeredActionEntrance(progress, indexFromLeft = idx, totalItems = totalButtons)
             )
         }

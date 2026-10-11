@@ -266,11 +266,13 @@ fun LinkCard(
 
     val hasUrlHD = !link.urlHD.isNullOrBlank()
     val hasUrl4K = !link.url4K.isNullOrBlank()
-    val hasAnyUrl = hasUrlHD || hasUrl4K
+    val hasUrlVR = !link.urlVR.isNullOrBlank()
+    val hasAnyUrl = hasUrlHD || hasUrl4K || hasUrlVR
 
     val hasMagnetHD = !link.magnet.isNullOrBlank() || !link.torrentUrlHD.isNullOrBlank()
     val hasMagnet4K = !link.magnet4K.isNullOrBlank() || !link.torrentUrl4K.isNullOrBlank()
-    val hasAnyMagnet = hasMagnetHD || hasMagnet4K
+    val hasMagnetVR = !link.magnetVR.isNullOrBlank() || !link.torrentUrlVR.isNullOrBlank()
+    val hasAnyMagnet = hasMagnetHD || hasMagnet4K || hasMagnetVR
 
     var isImageLoaded by remember(link.coverImage) { mutableStateOf(false) }
 
@@ -456,10 +458,16 @@ fun LinkCard(
                                         } else {
                                             !link.url4K.isNullOrBlank()
                                         }
+                                        val hasVR = if (selectedSource == Source.MAGNET) {
+                                            !link.magnetVR.isNullOrBlank() || !link.torrentUrlVR.isNullOrBlank()
+                                        } else {
+                                            !link.urlVR.isNullOrBlank()
+                                        }
 
                                         QualitySelectMenu(
                                             hasHD = hasHD,
                                             has4K = has4K,
+                                            hasVR = hasVR,
                                             onSelectHD = {
                                                 onDismissActive()
                                                 if (selectedSource == Source.MAGNET) {
@@ -476,6 +484,15 @@ fun LinkCard(
                                                     handleMagnet(targetUri)
                                                 } else {
                                                     handleUrlSelection(link.url4K)
+                                                }
+                                            },
+                                            onSelectVR = {
+                                                onDismissActive()
+                                                if (selectedSource == Source.MAGNET) {
+                                                    val targetUri = link.magnetVR.takeIf { !it.isNullOrBlank() } ?: link.torrentUrlVR
+                                                    handleMagnet(targetUri)
+                                                } else {
+                                                    handleUrlSelection(link.urlVR)
                                                 }
                                             }
                                         )

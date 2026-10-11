@@ -68,7 +68,8 @@ data class ActiveVideoPlayback(
     val qualities: List<StreamQuality>,
     val headers: Map<String, String> = emptyMap(),
     val initialPositionMs: Long = 0L,
-    val startInLandscape: Boolean = false
+    val startInLandscape: Boolean = false,
+    val startInVr: Boolean = false
 )
 
 data class ActiveInlineVideoPlayback(
@@ -387,7 +388,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private var resolveVideoJob: Job? = null
 
-    fun playVideo(rawUrl: String, title: String = "Media Stream", cardId: String? = null) {
+    fun playVideo(
+        rawUrl: String,
+        title: String = "Media Stream",
+        cardId: String? = null,
+        initialPositionMs: Long = 0L,
+        startInLandscape: Boolean = false,
+        startInVr: Boolean = false
+    ) {
         resolveVideoJob?.cancel()
         _videoResolutionError.value = null
         _resolvingCardId.value = cardId
@@ -435,12 +443,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     primaryQuality.url.contains("torbox.app", ignoreCase = true)
 
                 val displayTitle = if (resolved.title.isNotBlank() && resolved.title != "Media Stream") resolved.title else title
+                val shouldPlayInline = cardId != null && !startInVr
 
                 if (isDebridStream) {
                     // Instant playback for Debrid CDN streams: bypass redundant network probing
-                    if (cardId != null) {
+                    if (shouldPlayInline) {
                         _activeInlineVideo.value = ActiveInlineVideoPlayback(
-                            cardId = cardId,
+                            cardId = cardId!!,
                             title = displayTitle,
                             qualities = resolved.qualities,
                             headers = resolved.headers
@@ -449,7 +458,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         _activeVideo.value = ActiveVideoPlayback(
                             title = displayTitle,
                             qualities = resolved.qualities,
-                            headers = resolved.headers
+                            headers = resolved.headers,
+                            initialPositionMs = initialPositionMs,
+                            startInLandscape = startInLandscape,
+                            startInVr = startInVr
                         )
                     }
                 } else {
@@ -462,9 +474,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
                     when (validation) {
                         is ValidatedMediaResult.Valid -> {
-                            if (cardId != null) {
+                            if (shouldPlayInline) {
                                 _activeInlineVideo.value = ActiveInlineVideoPlayback(
-                                    cardId = cardId,
+                                    cardId = cardId!!,
                                     title = displayTitle,
                                     qualities = resolved.qualities,
                                     headers = resolved.headers
@@ -473,7 +485,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                                 _activeVideo.value = ActiveVideoPlayback(
                                     title = displayTitle,
                                     qualities = resolved.qualities,
-                                    headers = resolved.headers
+                                    headers = resolved.headers,
+                                    initialPositionMs = initialPositionMs,
+                                    startInLandscape = startInLandscape,
+                                    startInVr = startInVr
                                 )
                             }
                         }
@@ -481,9 +496,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             if (primaryQuality.url.startsWith("http://", ignoreCase = true) ||
                                 primaryQuality.url.startsWith("https://", ignoreCase = true)
                             ) {
-                                if (cardId != null) {
+                                if (shouldPlayInline) {
                                     _activeInlineVideo.value = ActiveInlineVideoPlayback(
-                                        cardId = cardId,
+                                        cardId = cardId!!,
                                         title = displayTitle,
                                         qualities = resolved.qualities,
                                         headers = resolved.headers
@@ -492,7 +507,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                                     _activeVideo.value = ActiveVideoPlayback(
                                         title = displayTitle,
                                         qualities = resolved.qualities,
-                                        headers = resolved.headers
+                                        headers = resolved.headers,
+                                        initialPositionMs = initialPositionMs,
+                                        startInLandscape = startInLandscape,
+                                        startInVr = startInVr
                                     )
                                 }
                             } else {
