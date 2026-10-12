@@ -1,9 +1,9 @@
 package com.example.ui.components.glass
 
-import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,15 +15,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -41,12 +40,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * Individual navigation tab item for Liquid Glass Bar with Gesture Support.
+ * Individual navigation tab item for Liquid Glass Bar.
  *
  * Implements:
- * - Tap to switch tab.
- * - Short long-press on Active Tab to trigger liquid gesture recoil.
- * - Tight vertical centering without text shadows or icon glares.
+ * - Dynamic proximity-based color and scale interpolation synchronized with selection indicator.
+ * - Reactive pulse bounce feedback on reselection.
+ * - Tight vertical centering with crisp icon and typography.
+ * - Accessibility tab semantics.
  */
 @Composable
 fun LiquidGlassNavigationItem(
@@ -57,8 +57,9 @@ fun LiquidGlassNavigationItem(
     unselectedColor: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    onLongClick: (() -> Unit)? = null,
-    isPressed: Boolean = false
+    isPressed: Boolean = false,
+    proximity: Float = if (isSelected) 1f else 0f,
+    pulseTrigger: Int = 0
 ) {
     val density = LocalDensity.current
     val configuration = androidx.compose.ui.platform.LocalConfiguration.current
@@ -72,23 +73,32 @@ fun LiquidGlassNavigationItem(
         label = "glass_press_scale"
     )
 
-    val selectedScale by animateFloatAsState(
-        targetValue = if (isSelected) 1.04f else 1.0f,
-        animationSpec = spring(dampingRatio = 0.8f, stiffness = 450f),
-        label = "glass_selected_scale"
-    )
+    // Dynamic elastic pulse on reselection of the active tab (e.g., Home)
+    val pulseBounce = remember { Animatable(1.0f) }
+    LaunchedEffect(pulseTrigger) {
+        if (pulseTrigger > 0 && isSelected) {
+            pulseBounce.snapTo(0.88f)
+            pulseBounce.animateTo(
+                targetValue = 1.20f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = 500f
+                )
+            )
+            pulseBounce.animateTo(
+                targetValue = 1.0f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioLowBouncy,
+                    stiffness = 350f
+                )
+            )
+        }
+    }
 
-    val contentColor by animateColorAsState(
-        targetValue = if (isSelected) accentColor else unselectedColor,
-        animationSpec = spring(stiffness = 400f),
-        label = "glass_icon_color"
-    )
-
-    val labelAlpha by animateFloatAsState(
-        targetValue = if (isSelected) 1.0f else 0.70f,
-        animationSpec = spring(stiffness = 400f),
-        label = "glass_label_alpha"
-    )
+    // Smooth proximity-based scale & color interpolation in continuous lockstep with indicator position
+    val selectedScale = 1.0f + (0.04f * proximity)
+    val contentColor = lerp(unselectedColor, accentColor, proximity)
+    val labelAlpha = 0.70f + (0.30f * proximity)
 
     val titleText = if (item.titleRes != 0) stringResource(id = item.titleRes) else item.title
 
@@ -114,7 +124,7 @@ fun LiquidGlassNavigationItem(
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
-            modifier = Modifier.scale(pressScale * selectedScale)
+            modifier = Modifier.scale(pressScale * selectedScale * pulseBounce.value)
         ) {
             Icon(
                 painter = painterResource(id = item.iconRes),

@@ -519,10 +519,21 @@ fun MainAppShell(viewModel: MainViewModel) {
                         onItemSelected = { item ->
                             viewModel.navigateTo(item.targetScreen)
                         },
+                        onItemReselected = { item ->
+                            if (item.id == "home") {
+                                if (currentScreen is ScreenState.ActorScenes || currentScreen is ScreenState.StudioScenes) {
+                                    viewModel.navigateTo(ScreenState.Home)
+                                } else {
+                                    if (viewModel.searchQuery.value.isNotEmpty()) {
+                                        viewModel.searchQuery.value = ""
+                                    }
+                                    viewModel.triggerScrollToTop()
+                                }
+                            }
+                        },
                         barHeightDp = currentSettings.navBarHeightDp,
                         transparency = currentSettings.navBarTransparency,
                         blurRadiusDp = currentSettings.navBarBlurDp,
-                        activeTabBlurDp = currentSettings.navBarActiveTabBlurDp,
                         activeTabIntensity = currentSettings.navBarActiveTabIntensity
                     )
                 }

@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
@@ -42,9 +41,7 @@ fun GlassSurface(
     modifier: Modifier = Modifier,
     blurRadius: Dp = 24.dp,
     transparency: Float = 0.65f,
-    hazeState: dev.chrisbanes.haze.HazeState? = LocalHazeState.current,
-    refractionStrength: Float = 0f,
-    chromaticAberration: Float = 0f
+    hazeState: dev.chrisbanes.haze.HazeState? = LocalHazeState.current
 ) {
 
     val drawEdgeLight: DrawScope.() -> Unit = {

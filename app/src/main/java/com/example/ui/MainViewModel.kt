@@ -259,6 +259,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val screenStack = Collections.synchronizedList(mutableListOf<ScreenState>(ScreenState.Home))
 
+    // Feed / Home Screen Scroll to Top Trigger (e.g., when active Home tab is reselected)
+    private val _scrollToTopTrigger = MutableStateFlow(0)
+    val scrollToTopTrigger: StateFlow<Int> = _scrollToTopTrigger.asStateFlow()
+
+    fun triggerScrollToTop() {
+        _scrollToTopTrigger.value++
+    }
+
     // App Lock State (PIN Security)
     private val _isAppLocked = MutableStateFlow(false)
     val isAppLocked: StateFlow<Boolean> = _isAppLocked.asStateFlow()

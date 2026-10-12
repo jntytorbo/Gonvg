@@ -157,6 +157,17 @@ fun HomeScreen(
         activeOverlayCardId = null
     }
 
+    // Smoothly scroll to top when Home active tab is tapped / reselected
+    val scrollToTopTrigger by viewModel.scrollToTopTrigger.collectAsStateWithLifecycle()
+    LaunchedEffect(scrollToTopTrigger) {
+        if (scrollToTopTrigger > 0) {
+            if (links.isNotEmpty()) {
+                listState.animateScrollToItem(0)
+            }
+            viewModel.saveScrollPosition(scrollKey, 0, 0)
+        }
+    }
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
